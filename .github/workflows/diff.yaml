@@ -68,6 +68,13 @@ jobs:
           body: |
             Diffing deployment!
 
+      - name: success
+        uses: GrantBirki/comment@v2.0.7
+        if: ${{ steps.lock.outputs.locked == 'false' || steps.lock.outputs.locked == 'true' && steps.lock.outputs.created_by == github.actor }}
+        with:
+          comment-id: ${{ github.event.comment.id }}
+          reactions: rocket
+
       # - name: branch-deploy
       #   id: branch-deploy
       #   uses: imranismail/branch-deploy@main
