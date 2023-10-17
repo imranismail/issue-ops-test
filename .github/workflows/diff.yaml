@@ -283,7 +283,7 @@ jobs:
             }
 
       - name: deploy
-        if: ${{ steps.lock.outputs.locked == 'true' || (steps.check_lock.outputs.locked == 'true' && steps.check_lock.outputs.pull_request == context.issue.number) }}
+        if: ${{ steps.lock.outputs.locked == 'true' || (steps.check_lock.outputs.locked == 'true' && steps.check_lock.outputs.pull_request == github.event.issue.number) }}
         uses: actions/github-script@v6
         with:
           script: |
