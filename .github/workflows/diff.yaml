@@ -27,7 +27,6 @@ jobs:
         id: branch-deploy
         uses: github/branch-deploy@v8.1.0
         with:
-          stable_branch: master
           allow_forks: false
           trigger: .diff
           environment: ${{ matrix.env }}
