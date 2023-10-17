@@ -1,0 +1,38 @@
+name: diff
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  pull-requests: write
+  deployments: write
+  contents: write
+  checks: read
+
+jobs:
+  diff:
+    name: diff
+    runs-on: ubuntu-latest
+    if: ${{ github.event.issue.pull_request }}
+
+    steps:
+      - name: branch-deploy
+        id: branch-deploy
+        uses: github/branch-deploy@v8.1.0
+        with:
+          stable_branch: master
+          allow_forks: false
+          trigger: .diff
+
+      - name: checkout
+        if: ${{ steps.branch-deploy.outputs.continue == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.branch-deploy.outputs.ref }}
+
+      - name: diff
+        if: ${{ steps.branch-deploy.outputs.continue == 'true' }}
+        shell: bash
+        run: |
+          echo "Doing diff stuff"
