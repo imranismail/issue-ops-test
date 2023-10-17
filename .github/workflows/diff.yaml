@@ -51,7 +51,7 @@ jobs:
               const response = await github.rest.repos.getContent({
                 ...context.repo,
                 path: "lock.json",
-                ref: "lock"
+                ref: "refs/heads/lock"
               })
 
               let lockData
@@ -68,7 +68,7 @@ jobs:
 
                 const result = await github.rest.git.deleteRef({
                   ...context.repo,
-                  ref: "heads/lock"
+                  ref: "refs/heads/lock"
                 })
 
                 if (result.status === 204) {
@@ -95,7 +95,7 @@ jobs:
               if (lockData.pull_request == context.issue.number) {
                 const result = await github.rest.git.deleteRef({
                   ...context.repo,
-                  ref: "heads/lock"
+                  ref: "refs/heads/lock"
                 })
 
                 if (result.status === 204) {
@@ -282,7 +282,7 @@ jobs:
               }
             }
 
-      - name: deploy
+      - name: diff
         if: ${{ steps.lock.outputs.locked == 'true' || (steps.check_lock.outputs.locked == 'true' && steps.check_lock.outputs.pull_request == github.event.issue.number) }}
         uses: actions/github-script@v6
         with:
