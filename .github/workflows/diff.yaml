@@ -1,5 +1,9 @@
 name: diff
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 on:
   issue_comment:
     types: [created]
