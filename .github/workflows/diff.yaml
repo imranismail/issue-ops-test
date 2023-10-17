@@ -198,6 +198,7 @@ jobs:
                 return true
               }
 
+              core.setOutput('locked', 'true')
               for (let key in lockData) {
                 core.setOutput(key, lockData[key])
               }
@@ -264,7 +265,7 @@ jobs:
             }
 
       - name: diff
-        if: ${{ steps.lock.outputs.locked == 'true' || (steps.check_lock.outputs.locked == 'true' && steps.check_lock.outputs.pull_request == github.event.issue.number) }}
+        if: ${{ (steps.check_lock.outputs.locked == 'true' && steps.check_lock.outputs.pull_request == github.event.issue.number) || (steps.lock.outputs.locked == 'true') }}
         uses: actions/github-script@v6
         with:
           script: |
