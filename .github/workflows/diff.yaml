@@ -14,7 +14,7 @@ permissions:
 jobs:
   unlock:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == "pull_request" && github.event.action == "closed" }}
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}
     steps:
       - name: unlock
         uses: github/lock@v2.1.1
@@ -23,7 +23,7 @@ jobs:
           mode: unlock
   diff:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == "issue_comment" && github.event.issue.pull_request && contains(github.event.comment.body, '/diff') }}
+    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/diff') }}
     steps:
       - name: lock
         uses: github/lock@v2.1.1
