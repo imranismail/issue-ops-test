@@ -20,8 +20,6 @@ jobs:
         include:
           - env: server1
             server: https://server1.example.com
-          - env: server2
-            server: https://server2.example.com
     steps:
       - name: branch-deploy
         id: branch-deploy
