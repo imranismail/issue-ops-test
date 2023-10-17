@@ -51,7 +51,7 @@ jobs:
               const response = await github.rest.repos.getContent({
                 ...context.repo,
                 path: "lock.json",
-                ref: "refs/heads/lock"
+                ref: "lock"
               })
 
               let lockData
@@ -62,40 +62,21 @@ jobs:
                 )
               } catch (error) {
                 core.warning(error.toString())
-                core.warning(
-                  'lock file exists, but cannot be decoded - unlocking.'
-                )
-
-                const result = await github.rest.git.deleteRef({
+                const comment = "Lock file exists, but cannot be decoded. Please check the lock file manually."
+                core.warning(comment)
+                await github.rest.issues.createComment({
                   ...context.repo,
-                  ref: "refs/heads/lock"
+                  issue_number: context.issue.number,
+                  body: comment
                 })
 
-                if (result.status === 204) {
-                  core.info("lock removed")
-                  await github.rest.issues.createComment({
-                    ...context.repo,
-                    issue_number: context.issue.number,
-                    body: "This repo is now unlocked"
-                  })
-                  return true
-                } else {
-                  const comment = `Lock could not be removed: HTTP ${result.status}`
-                  await github.rest.issues.createComment({
-                    ...context.repo,
-                    issue_number: context.issue.number,
-                    body: comment
-                  })
-                  throw new Error(comment)
-                }
-
-                return true
+                return false
               }
 
               if (lockData.pull_request == context.issue.number) {
                 const result = await github.rest.git.deleteRef({
                   ...context.repo,
-                  ref: "refs/heads/lock"
+                  ref: "heads/lock"
                 })
 
                 if (result.status === 204) {
@@ -206,15 +187,15 @@ jobs:
                 )
               } catch (error) {
                 core.warning(error.toString())
-                const comment = `Lock file exists, but cannot be decoded - setting locked to false. Please check the lock file manually.`
+                const comment = "Lock file exists, but cannot be decoded. Please check the lock file manually."
                 core.warning(comment)
-                core.setOutput('locked', 'false')
+                core.setOutput('locked', 'true')
                 await github.rest.issues.createComment({
                   ...context.repo,
                   issue_number: context.issue.number,
                   body: comment
                 })
-                return false
+                return true
               }
 
               for (let key in lockData) {
