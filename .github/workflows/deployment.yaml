@@ -22,16 +22,16 @@ jobs:
         with:
           allow_forks: false
           environment: global
-          noop_trigger: .diff
+          deploy_trigger: .diff
           trigger_message_template: |
-            {% set deploymentType = "diff" if noop else "deployment" %}
+            {% set deploymentType = "noop" if noop else "diff" %}
             ### {{ deploymentType | title }} Triggered 🚀
 
             {{ actor }} started a {{ deploymentType | lower }} to **{{ environment }}**
 
             You can watch the progress [here]({{ log_url }}) 🔗
           deploy_message_template: |
-            {% set deploymentType = "diff" if noop else "deploy" %}
+            {% set deploymentType = "noop" if noop else "diff" %}
             {% set emoji = "⚠️" %}
             {% set message = ["**", actor, "**", " ", deploymentType, "ed",  "ref", " ", "`", ref, "`"] %}
             {% if status === "success" -%}
@@ -47,13 +47,7 @@ jobs:
             {{ message | join }}
 
       - name: diff
-        if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop == 'true' }}
-        shell: bash
-        run: |
-          echo "Doing diff stuff on ${{steps.branch-deploy.outputs.environment}}"
-
-      - name: deploy
         if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop != 'true' }}
         shell: bash
         run: |
-          echo "Doing deploy stuff on ${{steps.branch-deploy.outputs.environment}}"
+          echo "Doing diff stuff on ${{steps.branch-deploy.outputs.environment}}"
