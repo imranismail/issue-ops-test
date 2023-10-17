@@ -26,15 +26,17 @@ jobs:
         uses: imranismail/branch-deploy@main
         with:
           allow_forks: false
-          trigger: .diff
           environment: ${{ matrix.env }}
           environment_urls: "${{ matrix.env }}|${{ matrix.server }}"
+          trigger: .diff
+          trigger_message_template: |
+            ### Diff Triggered 🚀
 
-      - name: checkout
-        if: ${{ steps.branch-deploy.outputs.continue == 'true' }}
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.branch-deploy.outputs.ref }}
+            {{ actor }} started a {{ deployment_type | lower }} diff to {{ environment }}
+
+            You can watch the progress [here]({{ log_url }}) 🔗
+
+            > {{ deployment_type }}: `{{ ref }}`
 
       - name: diff
         if: ${{ steps.branch-deploy.outputs.continue == 'true' }}
