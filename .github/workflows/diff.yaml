@@ -97,7 +97,7 @@ jobs:
                   throw new Error(comment)
                 }
               } else {
-                const comment = `This repo is currently locked by #${lockData.pull_request}. Please wait for them to finish before trying again.`
+                const comment = `This repo is currently locked by #${lockData.pull_request}. Please wait for the PR to close before trying again or use \`/unlock\` on #${lockData.pull_request} to remove the lock.`
                 await github.rest.issues.createComment({
                   ...context.repo,
                   issue_number: context.issue.number,
@@ -203,7 +203,7 @@ jobs:
               }
 
               if (lockData.pull_request != context.issue.number) {
-                const comment = `This repo is currently locked by #${lockData.pull_request}. Please wait for them to finish before trying again or use \`/unlock\` on #${lockData.pull_request} to remove the lock.`
+                const comment = `This repo is currently locked by #${lockData.pull_request}. Please wait for the PR to close before trying again or use \`/unlock\` on #${lockData.pull_request} to remove the lock.`
                 await github.rest.issues.createComment({
                   ...context.repo,
                   issue_number: context.issue.number,
