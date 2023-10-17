@@ -1,4 +1,4 @@
-name: diff
+name: deploy
 
 on:
   issue_comment:
@@ -11,8 +11,8 @@ permissions:
   checks: read
 
 jobs:
-  diff:
-    name: diff
+  deploy:
+    name: deploy
     runs-on: ubuntu-latest
     if: ${{ github.event.issue.pull_request }}
     strategy:
@@ -28,34 +28,38 @@ jobs:
           allow_forks: false
           environment: ${{ matrix.env }}
           environment_urls: "${{ matrix.env }}|${{ matrix.server }}"
-          trigger: .diff
+          noop_trigger: .diff
           trigger_message_template: |
-            ### Diff Triggered 🚀
+            {% set deploymentType = "diff" if noop else "deployment" %}
+            ### {{ deploymentType | title }} Triggered 🚀
 
-            {{ actor }} started a {{ deployment_type | lower }} diff to **{{ environment_url }}**
+            {{ actor }} started a {{ deploymentType | lower }} to **{{ environment_url }}**
 
             You can watch the progress [here]({{ log_url }}) 🔗
-
-            > {{ deployment_type }}: `{{ ref }}`
           deploy_message_template: |
-            {% set deploymentType = " **noop** " if noop else " " %}
+            {% set deploymentType = "diff" if noop else "deploy" %}
             {% set emoji = "⚠️" %}
-            {% set message = ["Warning:", deploymentType, "diffing status is unknown, please use caution"] %}
+            {% set message = ["**", actor, "**", " ", deploymentType, "ed",  "ref", " ", "`", ref, "`"] %}
             {% if status === "success" -%}
               {% set emoji = "✅" %}
-              {% set message = ["**", actor, "**", " successfully", deploymentType, "diffed branch `", ref, "` to **", environment, "**"] %}
+              {% set message = ["**", actor, "**", " ", "successfully", " ", deploymentType, "ed" ," ", "ref", " ", "`", ref, "`", " ", "to", " ", "**", environment, "**"] %}
             {%- elif status === "failure" -%}
               {% set emoji = "❌" %}
-              {% set message = ["**", actor, "**", " had a failure when", deploymentType, "diffing branch `", ref, "` to **", environment, "**"] %}
+              {% set message = ["**", actor, "**", " ", "had a failure when", " ", deploymentType, "ing", " ", "ref", " ", "`", ref, "`", "to", " ", "**", environment, "**"] %}
             {%- endif %}
 
-            ### Diff Results {{ emoji }}
+            ### {{ "Deployment" if deploymentType == "deploy" else "Diff" }} Results {{ emoji }}
 
             {{ message | join }}
 
-
       - name: diff
-        if: ${{ steps.branch-deploy.outputs.continue == 'true' }}
+        if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop == 'true' }}
         shell: bash
         run: |
           echo "Doing diff stuff on ${{steps.branch-deploy.outputs.environment}}"
+
+      - name: diff
+        if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop != 'true' }}
+        shell: bash
+        run: |
+          echo "Doing deploy stuff on ${{steps.branch-deploy.outputs.environment}}"
