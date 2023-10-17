@@ -12,6 +12,16 @@ permissions:
   checks: read
 
 jobs:
+  ilock:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request }}
+    steps:
+      - name: lock
+        uses: github/lock@v2.1.1
+        with:
+          environment: global
+          lock_trigger: /lock
+          unlock_trigger: /unlock
   unlock:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}
@@ -25,34 +35,38 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/diff') }}
     steps:
+      - name: acknowledge
+        uses: GrantBirki/comment@v2.0.7
+        with:
+          comment-id: ${{ github.event.comment.id }}
+          reactions: eyes
+
       - name: lock
         uses: github/lock@v2.1.1
         with:
           environment: global
           mode: check
 
-      - name: verify_lock
-        shell: bash
-        run: |
-          if [[ "${{ steps.lock.outputs.locked }}" == "true" && "${{ steps.lock.outputs.created_by }}" != "${{ github.actor }}" ]]; then
-            gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "Locked by ${{ steps.lock.outputs.created_by }}"
-            exit 1
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: locked_comment
+        uses: GrantBirki/comment@v2.0.7
+        if: ${{ steps.lock.outputs.locked == 'true' && steps.lock.outputs.created_by != github.actor }}
+        with:
+          body: |
+            This repo is currently locked by ${{ steps.lock.outputs.created_by }}. Please wait for them to finish before trying again.
 
       - name: acquire_lock
         uses: github/lock@v2.1.1
+        if: ${{ steps.lock.outputs.locked == 'false' }}
         with:
           environment: global
           mode: lock
 
       - name: diff
-        shell: bash
-        run: |
-          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "Diffing deployment"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: GrantBirki/comment@v2.0.7
+        if: ${{ steps.lock.outputs.locked == 'false' || steps.lock.outputs.locked == 'true' && steps.lock.outputs.created_by == github.actor }}
+        with:
+          body: |
+            Diffing deployment!
 
       # - name: branch-deploy
       #   id: branch-deploy
