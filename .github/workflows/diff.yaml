@@ -33,6 +33,8 @@ jobs:
         shell: bash
         run: |
           gh pr comment ${{ github.event.issue.number }} -b "Doing diff stuff on ${{ github.event.issue.pull_request.head.ref }}"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       # - name: branch-deploy
       #   id: branch-deploy
