@@ -217,11 +217,19 @@ jobs:
                 core.setOutput(key, lockData[key])
               }
 
-              await github.rest.issues.createComment({
-                ...context.repo,
-                issue_number: context.issue.number,
-                body: `This repo is currently locked by #${lockData.pull_request}. Please wait for them to finish before trying again or use \`/unlock\` on #${lockData.pull_request} to remove the lock.`
-              })
+              if (lockData.pull_request != context.issue.number) {
+                core.setOutput('locked', 'true')
+                const comment = `This repo is currently locked by #${lockData.pull_request}. Please wait for them to finish before trying again or use \`/unlock\` on #${lockData.pull_request} to remove the lock.`
+                await github.rest.issues.createComment({
+                  ...context.repo,
+                  issue_number: context.issue.number,
+                  body: comment
+                })
+                return true
+              } else {
+                core.setOutput('locked', 'false')
+                return false
+              }
             } catch (error) {
               if (error.status === 404) {
                 core.setOutput('locked', 'false')
