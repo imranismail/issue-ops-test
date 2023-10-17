@@ -220,7 +220,7 @@ jobs:
               await github.rest.issues.createComment({
                 ...context.repo,
                 issue_number: context.issue.number,
-                body: `This repo is currently locked by #${lockData.pull_request}. Please wait for them to finish before trying again.`
+                body: `This repo is currently locked by #${lockData.pull_request}. Please wait for them to finish before trying again or use \`/unlock\` on #${lockData.pull_request} to remove the lock.`
               })
             } catch (error) {
               if (error.status === 404) {
@@ -237,6 +237,21 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
+            const repo = await github.rest.repos.get({
+              ...context.repo
+            })
+
+            const baseBranch = await github.rest.repos.getBranch({
+              ...context.repo,
+              branch: repo.data.default_branch
+            })
+
+            await github.rest.git.createRef({
+              ...context.repo,
+              ref: "refs/heads/lock",
+              sha: baseBranch.data.commit.sha
+            })
+
             const lockData = {
               created_at: new Date().toISOString(),
               created_by: context.actor,
