@@ -14,7 +14,7 @@ permissions:
 jobs:
   unlock:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == "pull_request" && github.event.pull_request.type == "closed" }}
+    if: ${{ github.event_name == "pull_request" && github.event.action == "closed" }}
     steps:
       - name: unlock
         uses: github/lock@v2.1.1
