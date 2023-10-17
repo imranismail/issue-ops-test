@@ -28,7 +28,6 @@ jobs:
           stable_branch: master
           allow_forks: false
           trigger: .diff
-          disable_naked_commands: true
           environment: ${{ matrix.server }}
 
       - name: checkout
