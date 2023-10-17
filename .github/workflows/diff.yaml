@@ -64,13 +64,22 @@ jobs:
           environment: global
           mode: lock
 
-      - name: diff
-        uses: GrantBirki/comment@v2.0.7
-        if: ${{ steps.lock.outputs.locked == 'false' || steps.lock.outputs.locked == 'true' && steps.lock.outputs.created_by == github.actor }}
+      - name: install_tools
+        uses: asdf-vm/actions/install@v2
         with:
-          issue-number: ${{ github.event.issue.number }}
-          body: |
-            Diffing deployment!
+          tool_versions: |
+            argocd 2.8.4
+
+      - name: diff
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "Hello, world!"
+            });
 
       - name: success
         uses: GrantBirki/comment@v2.0.7
@@ -85,45 +94,3 @@ jobs:
         with:
           comment-id: ${{ github.event.comment.id }}
           reactions: "-1"
-
-      # - name: branch-deploy
-      #   id: branch-deploy
-      #   uses: imranismail/branch-deploy@main
-      #   with:
-      #     allow_forks: false
-      #     environment: global
-      #     noop_trigger: .diff
-      #     trigger_message_template: |
-      #       {% set deploymentType = "diff" if noop else "deployment" %}
-      #       ### {{ deploymentType | title }} Triggered 🚀
-
-      #       {{ actor }} started a {{ deploymentType | lower }} to **{{ environment }}**
-
-      #       You can watch the progress [here]({{ log_url }}) 🔗
-      #     deploy_message_template: |
-      #       {% set deploymentType = "diff" if noop else "deploy" %}
-      #       {% set emoji = "⚠️" %}
-      #       {% set message = ["**", actor, "**", " ", deploymentType, "ed",  "ref", " ", "`", ref, "`"] %}
-      #       {% if status === "success" -%}
-      #         {% set emoji = "✅" %}
-      #         {% set message = ["**", actor, "**", " ", "successfully", " ", deploymentType, "ed" ," ", "ref", " ", "`", ref, "`", " ", "to", " ", "**", environment, "**"] %}
-      #       {%- elif status === "failure" -%}
-      #         {% set emoji = "❌" %}
-      #         {% set message = ["**", actor, "**", " ", "had a failure when", " ", deploymentType, "ing", " ", "ref", " ", "`", ref, "`", "to", " ", "**", environment, "**"] %}
-      #       {%- endif %}
-
-      #       ### {{ "Deployment" if deploymentType == "deploy" else "Diff" }} Results {{ emoji }}
-
-      #       {{ message | join }}
-
-      # - name: diff
-      #   if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop == 'true' }}
-      #   shell: bash
-      #   run: |
-      #     echo "Doing diff stuff on ${{steps.branch-deploy.outputs.environment}}"
-
-      # - name: deploy
-      #   if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop != 'true' }}
-      #   shell: bash
-      #   run: |
-      #     echo "Doing deploy stuff on ${{steps.branch-deploy.outputs.environment}}"
