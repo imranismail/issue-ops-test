@@ -22,7 +22,6 @@ jobs:
         with:
           allow_forks: false
           environment: global
-          disable_naked_commands: true
           noop_trigger: .diff
           trigger_message_template: |
             {% set deploymentType = "diff" if noop else "deployment" %}
