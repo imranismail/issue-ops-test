@@ -1,4 +1,4 @@
-name: deployment
+name: diff
 
 on:
   issue_comment:
@@ -21,7 +21,7 @@ jobs:
         with:
           environment: global
           mode: unlock
-  deploy:
+  diff:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == "issue_comment" && github.event.issue.pull_request && contains(github.event.comment.body, '/diff') }}
     steps:
