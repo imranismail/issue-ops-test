@@ -46,7 +46,7 @@ jobs:
         id: lock
         uses: github/lock@v2.1.1
         with:
-          environment: global
+          environment: servera
           mode: check
 
       - name: locked_comment
