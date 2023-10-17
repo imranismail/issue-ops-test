@@ -6,48 +6,73 @@ on:
 
 permissions:
   pull-requests: write
-  deployments: write
   contents: write
   checks: read
 
 jobs:
   deploy:
-    name: deploy
     runs-on: ubuntu-latest
-    if: ${{ github.event.issue.pull_request }}
+    if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, '/diff') }}
     steps:
-      - name: branch-deploy
-        id: branch-deploy
-        uses: imranismail/branch-deploy@main
+      - name: lock
+        id: lock
+        uses: github/lock@v2.1.1
         with:
-          allow_forks: false
           environment: global
-          deploy_trigger: .diff
-          trigger_message_template: |
-            {% set deploymentType = "noop" if noop else "diff" %}
-            ### {{ deploymentType | title }} Triggered 🚀
+          mode: check
 
-            {{ actor }} started a {{ deploymentType | lower }} to **{{ environment }}**
+      - name: acquire-lock
+        uses: github/lock@v2.1.1
+        with:
+          environment: global
+          mode: lock
 
-            You can watch the progress [here]({{ log_url }}) 🔗
-          deploy_message_template: |
-            {% set deploymentType = "noop" if noop else "diff" %}
-            {% set emoji = "⚠️" %}
-            {% set message = ["**", actor, "**", " ", deploymentType, "ed",  "ref", " ", "`", ref, "`"] %}
-            {% if status === "success" -%}
-              {% set emoji = "✅" %}
-              {% set message = ["**", actor, "**", " ", "successfully", " ", deploymentType, "ed" ," ", "ref", " ", "`", ref, "`", " ", "to", " ", "**", environment, "**"] %}
-            {%- elif status === "failure" -%}
-              {% set emoji = "❌" %}
-              {% set message = ["**", actor, "**", " ", "had a failure when", " ", deploymentType, "ing", " ", "ref", " ", "`", ref, "`", "to", " ", "**", environment, "**"] %}
-            {%- endif %}
-
-            ### {{ "Deployment" if deploymentType == "deploy" else "Diff" }} Results {{ emoji }}
-
-            {{ message | join }}
-
-      - name: diff
-        if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop != 'true' }}
+      - name: deploy
         shell: bash
+        if: ${{ steps.lock.outputs.locked == 'false' || steps.lock.outputs.locked == 'true' && steps.lock.outputs.actor == github.actor }}
         run: |
-          echo "Doing diff stuff on ${{steps.branch-deploy.outputs.environment}}"
+          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "Diffing deployment"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: branch-deploy
+      #   id: branch-deploy
+      #   uses: imranismail/branch-deploy@main
+      #   with:
+      #     allow_forks: false
+      #     environment: global
+      #     noop_trigger: .diff
+      #     trigger_message_template: |
+      #       {% set deploymentType = "diff" if noop else "deployment" %}
+      #       ### {{ deploymentType | title }} Triggered 🚀
+
+      #       {{ actor }} started a {{ deploymentType | lower }} to **{{ environment }}**
+
+      #       You can watch the progress [here]({{ log_url }}) 🔗
+      #     deploy_message_template: |
+      #       {% set deploymentType = "diff" if noop else "deploy" %}
+      #       {% set emoji = "⚠️" %}
+      #       {% set message = ["**", actor, "**", " ", deploymentType, "ed",  "ref", " ", "`", ref, "`"] %}
+      #       {% if status === "success" -%}
+      #         {% set emoji = "✅" %}
+      #         {% set message = ["**", actor, "**", " ", "successfully", " ", deploymentType, "ed" ," ", "ref", " ", "`", ref, "`", " ", "to", " ", "**", environment, "**"] %}
+      #       {%- elif status === "failure" -%}
+      #         {% set emoji = "❌" %}
+      #         {% set message = ["**", actor, "**", " ", "had a failure when", " ", deploymentType, "ing", " ", "ref", " ", "`", ref, "`", "to", " ", "**", environment, "**"] %}
+      #       {%- endif %}
+
+      #       ### {{ "Deployment" if deploymentType == "deploy" else "Diff" }} Results {{ emoji }}
+
+      #       {{ message | join }}
+
+      # - name: diff
+      #   if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop == 'true' }}
+      #   shell: bash
+      #   run: |
+      #     echo "Doing diff stuff on ${{steps.branch-deploy.outputs.environment}}"
+
+      # - name: deploy
+      #   if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop != 'true' }}
+      #   shell: bash
+      #   run: |
+      #     echo "Doing deploy stuff on ${{steps.branch-deploy.outputs.environment}}"
