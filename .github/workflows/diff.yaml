@@ -267,6 +267,7 @@ jobs:
             })
 
             if (result.ok) {
+              core.setOutput('locked', 'true')
               for (let key in lockData) {
                 core.setOutput(key, lockData[key])
               }
