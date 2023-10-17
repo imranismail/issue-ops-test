@@ -15,25 +15,19 @@ jobs:
     name: deploy
     runs-on: ubuntu-latest
     if: ${{ github.event.issue.pull_request }}
-    strategy:
-      matrix:
-        include:
-          - env: server1
-            server: https://server1.example.com
     steps:
       - name: branch-deploy
         id: branch-deploy
         uses: imranismail/branch-deploy@main
         with:
           allow_forks: false
-          environment: ${{ matrix.env }}
-          environment_urls: "${{ matrix.env }}|${{ matrix.server }}"
+          disable_naked_commands: true
           noop_trigger: .diff
           trigger_message_template: |
             {% set deploymentType = "diff" if noop else "deployment" %}
             ### {{ deploymentType | title }} Triggered 🚀
 
-            {{ actor }} started a {{ deploymentType | lower }} to **{{ environment_url }}**
+            {{ actor }} started a {{ deploymentType | lower }} to **{{ environment }}**
 
             You can watch the progress [here]({{ log_url }}) 🔗
           deploy_message_template: |
@@ -58,7 +52,7 @@ jobs:
         run: |
           echo "Doing diff stuff on ${{steps.branch-deploy.outputs.environment}}"
 
-      - name: diff
+      - name: deploy
         if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop != 'true' }}
         shell: bash
         run: |
