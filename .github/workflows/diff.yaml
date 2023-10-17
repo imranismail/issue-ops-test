@@ -25,7 +25,7 @@ jobs:
     steps:
       - name: branch-deploy
         id: branch-deploy
-        uses: github/branch-deploy@v8.1.0
+        uses: imranismail/branch-deploy@main
         with:
           allow_forks: false
           trigger: .diff
