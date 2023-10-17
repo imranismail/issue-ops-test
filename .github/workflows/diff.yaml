@@ -22,6 +22,7 @@ jobs:
           environment: global
           lock_trigger: /lock
           unlock_trigger: /unlock
+          lock_info_alias: /wcid
   unlock:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}
