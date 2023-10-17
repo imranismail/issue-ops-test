@@ -31,8 +31,9 @@ jobs:
 
       - name: diff
         if: contains(github.event.comment.body, '.diff')
+        shell: bash
         run: |
-          echo "Doing diff stuff on ${{ github.event.issue.pull_request.head.ref }}"
+          gh pr comment ${{ github.event.issue.number }} -b "Doing diff stuff on ${{ github.event.issue.pull_request.head.ref }}"
 
       # - name: branch-deploy
       #   id: branch-deploy
