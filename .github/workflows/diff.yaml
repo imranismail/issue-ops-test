@@ -42,6 +42,7 @@ jobs:
           reactions: eyes
 
       - name: lock
+        id: lock
         uses: github/lock@v2.1.1
         with:
           environment: global
