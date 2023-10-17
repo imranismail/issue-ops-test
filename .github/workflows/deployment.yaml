@@ -3,6 +3,8 @@ name: deployment
 on:
   issue_comment:
     types: [created]
+  pull_request:
+    types: [closed]
 
 permissions:
   pull-requests: write
@@ -10,26 +12,43 @@ permissions:
   checks: read
 
 jobs:
+  unlock:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == "pull_request" && github.event.pull_request.type == "closed" }}
+    steps:
+      - name: unlock
+        uses: github/lock@v2.1.1
+        with:
+          environment: global
+          mode: unlock
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, '/diff') }}
+    if: ${{ github.event_name == "issue_comment" && github.event.issue.pull_request && contains(github.event.comment.body, '/diff') }}
     steps:
       - name: lock
-        id: lock
         uses: github/lock@v2.1.1
         with:
           environment: global
           mode: check
 
-      - name: acquire-lock
+      - name: verify_lock
+        shell: bash
+        run: |
+          if [[ "${{ steps.lock.outputs.locked }}" == "true" && "${{ steps.lock.outputs.created_by }}" != "${{ github.actor }}" ]]; then
+            gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "Locked by ${{ steps.lock.outputs.created_by }}"
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: acquire_lock
         uses: github/lock@v2.1.1
         with:
           environment: global
           mode: lock
 
-      - name: deploy
+      - name: diff
         shell: bash
-        if: ${{ steps.lock.outputs.locked == 'false' || steps.lock.outputs.locked == 'true' && steps.lock.outputs.actor == github.actor }}
         run: |
           gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "Diffing deployment"
         env:
