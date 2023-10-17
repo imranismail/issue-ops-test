@@ -53,6 +53,7 @@ jobs:
 
       - name: locked_comment
         uses: actions/github-script@v6
+        if: ${{ steps.lock.outputs.locked == 'true' && steps.lock.outputs.created_by != github.actor }}
         with:
           script: |
             github.rest.issues.createComment({
