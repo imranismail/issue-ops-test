@@ -17,9 +17,11 @@ jobs:
     if: ${{ github.event.issue.pull_request }}
     strategy:
       matrix:
-        server:
-          - https://server1.example.com
-          - https://server2.example.com
+        include:
+          - env: server1
+            server: https://server1.example.com
+          - env: server2
+            server: https://server2.example.com
     steps:
       - name: branch-deploy
         id: branch-deploy
@@ -28,7 +30,8 @@ jobs:
           stable_branch: master
           allow_forks: false
           trigger: .diff
-          environment: ${{ matrix.server }}
+          environment: ${{ matrix.env }}
+          environment_urls: "${{ matrix.env }}|${{ matrix.server }}"
 
       - name: checkout
         if: ${{ steps.branch-deploy.outputs.continue == 'true' }}
