@@ -22,7 +22,7 @@ jobs:
           environment: global
 
       - uses: github/lock@v2.1.1
-        if: contains(github.event.comment.body, '.diff')
+        if: contains(github.event.comment.body, '.diff') and steps.lock.outputs.locked == 'false'
         with:
           mode: lock
           environment: global
