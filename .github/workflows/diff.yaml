@@ -12,24 +12,154 @@ permissions:
   checks: read
 
 jobs:
-  ilock:
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request }}
-    steps:
-      - name: ilock
-        uses: github/lock@v2.1.1
-        with:
-          lock_trigger: /lock
-          unlock_trigger: /unlock
-          lock_info_alias: /wcid
   unlock:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}
+    if: ${{ (github.event_name == 'pull_request' && github.event.action == 'closed') || (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/unlock')) }}
     steps:
-      - name: unlock
-        uses: github/lock@v2.1.1
+      - name: acknowledge
+        if: ${{ github.event_name == 'issue_comment' }}
+        uses: actions/github-script@v6
         with:
-          mode: unlock
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              ...context.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes',
+            })
+      - name: unlock
+        uses: actions/github-script@v6
+        with:
+          script: |
+            try {
+              await github.rest.repos.getBranch({
+                ...context.repo,
+                branch: "lock"
+              })
+            } catch (error) {
+              if (error.status === 404) {
+                comment = "No lock currently set"
+                await github.rest.issues.createComment({
+                  ...context.repo,
+                  issue_number: context.issue.number,
+                  body: comment
+                })
+                return true
+              }
+            }
+
+            try {
+              const response = await github.rest.repos.getContent({
+                ...context.repo,
+                path: "lock.json",
+                ref: "lock"
+              })
+
+              let lockData
+
+              try {
+                lockData = JSON.parse(
+                  Buffer.from(response.data.content, 'base64').toString()
+                )
+              } catch (error) {
+                core.warning(error.toString())
+                core.warning(
+                  'lock file exists, but cannot be decoded - unlocking.'
+                )
+
+                const result = await github.rest.git.deleteRef({
+                  ...context.repo,
+                  ref: "heads/lock"
+                })
+
+                if (result.status === 204) {
+                  core.info("lock removed")
+                  await github.rest.issues.createComment({
+                    ...context.repo,
+                    issue_number: context.issue.number,
+                    body: "This repo is now unlocked"
+                  })
+                  return true
+                } else {
+                  const comment = `Lock could not be removed: HTTP ${result.status}`
+                  await github.rest.issues.createComment({
+                    ...context.repo,
+                    issue_number: context.issue.number,
+                    body: comment
+                  })
+                  throw new Error(comment)
+                }
+
+                return true
+              }
+
+              if (lockData.pull_request == context.issue.number) {
+                const result = await github.rest.git.deleteRef({
+                  ...context.repo,
+                  ref: "heads/lock"
+                })
+
+                if (result.status === 204) {
+                  core.info("lock removed")
+                  await github.rest.issues.createComment({
+                    ...context.repo,
+                    issue_number: context.issue.number,
+                    body: "This repo is now unlocked"
+                  })
+                  return true
+                } else {
+                  const comment = `Lock could not be removed: HTTP ${result.status}`
+                  await github.rest.issues.createComment({
+                    ...context.repo,
+                    issue_number: context.issue.number,
+                    body: comment
+                  })
+                  throw new Error(comment)
+                }
+              } else {
+                const comment = `This repo is currently locked by #${lockData.pull_request}. Please wait for them to finish before trying again.`
+                await github.rest.issues.createComment({
+                  ...context.repo,
+                  issue_number: context.issue.number,
+                  body: comment
+                })
+                throw new Error(comment)
+              }
+            } catch (error) {
+              if (error.status === 404) {
+                await github.rest.issues.createComment({
+                  ...context.repo,
+                  issue_number: context.issue.number,
+                  body: "No lock currently set"
+                })
+                return false
+              }
+
+              throw new Error(error)
+            }
+      - name: success
+        uses: actions/github-script@v6
+        if: ${{ success() && github.event_name == 'issue_comment' }}
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              comment_id: context.payload.comment.id,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              content: '+1',
+            })
+
+      - name: failure
+        uses: actions/github-script@v6
+        if: ${{ failure() && github.event_name == 'issue_comment' }}
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              comment_id: context.payload.comment.id,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              content: '-1',
+            })
+
   diff:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/diff') }}
@@ -38,74 +168,127 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            github.rest.reactions.createForIssueComment({
+            await github.rest.reactions.createForIssueComment({
+              ...context.repo,
               comment_id: context.payload.comment.id,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
               content: 'eyes',
-            });
+            })
+
+      - name: check_lock
+        id: check_lock
+        uses: actions/github-script@v6
+        with:
+          script: |
+            try {
+              await github.rest.repos.getBranch({
+                ...context.repo,
+                branch: "lock"
+              })
+            } catch (error) {
+              if (error.status === 404) {
+                core.setOutput('locked', 'false')
+                return false
+              }
+            }
+
+            try {
+              const response = await github.rest.repos.getContent({
+                ...context.repo,
+                path: "lock.json",
+                ref: "lock"
+              })
+
+              let lockData
+
+              try {
+                lockData = JSON.parse(
+                  Buffer.from(response.data.content, 'base64').toString()
+                )
+              } catch (error) {
+                core.warning(error.toString())
+                core.warning(
+                  'lock file exists, but cannot be decoded - setting locked to false'
+                )
+                core.setOutput('locked', 'false')
+                return false
+              }
+
+              for (let key in lockData) {
+                core.setOutput(key, lockData[key])
+              }
+
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: context.issue.number,
+                body: `This repo is currently locked by #${lockData.pull_request}. Please wait for them to finish before trying again.`
+              })
+            } catch (error) {
+              if (error.status === 404) {
+                core.setOutput('locked', 'false')
+                return false
+              }
+
+              throw new Error(error)
+            }
 
       - name: lock
         id: lock
-        uses: github/lock@v2.1.1
-        with:
-          mode: check
-
-      - name: locked_comment
-        uses: actions/github-script@v6
-        if: ${{ steps.lock.outputs.locked == 'true' && steps.lock.outputs.created_by != github.actor }}
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: "This repo is currently locked by ${{ steps.lock.outputs.created_by }}. Please wait for them to finish before trying again."
-            });
-
-      - name: acquire_lock
-        uses: github/lock@v2.1.1
-        if: ${{ steps.lock.outputs.locked == 'false' }}
-        with:
-          mode: lock
-
-      - name: install_tools
-        uses: asdf-vm/actions/install@v2
-        with:
-          tool_versions: |
-            argocd 2.8.4
-
-      - name: diff
+        if: ${{ steps.check_lock.outputs.locked == 'false' }}
         uses: actions/github-script@v6
         with:
           script: |
-            github.rest.issues.createComment({
+            const lockData = {
+              created_at: new Date().toISOString(),
+              created_by: context.actor,
+              pull_request: context.issue.number,
+            }
+
+            const result = await octokit.rest.repos.createOrUpdateFileContents({
+              ...context.repo,
+              path: "lock.json",
+              message: "lock",
+              content: Buffer.from(JSON.stringify(lockData)).toString('base64'),
+              branch: "lock"
+            })
+
+            if (result.ok) {
+              for (let key in lockData) {
+                core.setOutput(key, lockData[key])
+              }
+            }
+
+      - name: deploy
+        if: ${{ steps.lock.outputs.locked == 'true' }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: "Hello, world!"
-            });
+              body: "Deploying!"
+            })
 
       - name: success
         uses: actions/github-script@v6
         if: ${{ success() }}
         with:
           script: |
-            github.rest.reactions.createForIssueComment({
+            await github.rest.reactions.createForIssueComment({
               comment_id: context.payload.comment.id,
               owner: context.repo.owner,
               repo: context.repo.repo,
               content: '+1',
-            });
+            })
 
       - name: failure
         uses: actions/github-script@v6
         if: ${{ failure() }}
         with:
           script: |
-            github.rest.reactions.createForIssueComment({
+            await github.rest.reactions.createForIssueComment({
               comment_id: context.payload.comment.id,
               owner: context.repo.owner,
               repo: context.repo.repo,
               content: '-1',
-            });
+            })
